@@ -7,6 +7,7 @@ Kollaboratives Whiteboard — gemeinsam in Echtzeit zeichnen, kein Login nötig.
 - **Echtzeit-Kollaboration** — mehrere Nutzer im gleichen Raum via Socket.IO
 - **Username** — Namenswahl beim Betreten des Raums (gespeichert in localStorage)
 - **Letzter Raum** — Raumname wird gespeichert und beim nächsten Besuch vorausgefüllt
+- **Pan & Minimap** — 2560×1440 virtueller Canvas, navigierbar per Hand-Tool und Minimap
 - **Zeichenwerkzeuge** — Stift, Linie, Rechteck, Kreis, Radierer, Auswahl
 - **HSL-Farbpicker** — Spektralstreifen + H/S/L-Regler inkl. Vorschau
 - **128-Farben-Palette** — Rechtsklick speichert, Linksklick lädt (localStorage)
