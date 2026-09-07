@@ -138,7 +138,7 @@
     #canvas-wrap {
       flex: 1;
       position: relative;
-      overflow: hidden;
+      overflow: auto;
       background: #111114;
     }
     #main-canvas {
@@ -146,6 +146,11 @@
       top: 0;
       left: 0;
       cursor: crosshair;
+      background: #111114;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
     }
     #cursor-layer {
       position: absolute;
@@ -487,7 +492,30 @@
     #refine-btn { display: none; }
     #refine-btn.visible { display: flex; }
     #refine-btn.loading { opacity: 0.6; pointer-events: none; }
-    /* Selection Overlay */
+    /* Minimap */
+    #minimap {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 180px;
+      height: 100px;
+      background: #141418;
+      border: 1px solid #2a2a2f;
+      border-radius: 8px;
+      z-index: 200;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    #minimap-canvas {
+      width: 100%;
+      height: 100%;
+    }
+    #minimap-viewport {
+      position: absolute;
+      border: 2px solid #5b8cff;
+      background: rgba(91,140,255,0.1);
+      pointer-events: none;
+    }
     .selection-rect {
       position: absolute;
       border: 2px dashed #5b8cff;
@@ -548,6 +576,9 @@
       <button class="tool-btn active" data-tool="pen" title="Pen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
       </button>
+      <button class="tool-btn" data-tool="pan" title="Pan (Maus ziehen)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8v8a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4v-4"/></svg>
+      </button>
       <button class="tool-btn" data-tool="line" title="Line">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"/></svg>
       </button>
@@ -582,6 +613,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
     </div>
+    <div id="minimap">
+      <canvas id="minimap-canvas"></canvas>
+      <div id="minimap-viewport"></div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -597,13 +632,17 @@
       currentRoom: null,
       username: '',
       socket: null,
-      strokes: [],           // local strokes for undo
-      peerStrokes: {},       // remote strokes keyed by strokeId
+      strokes: [],
+      peerStrokes: {},
       peerCursors: {},
       currentStroke: null,
-      lineStart: null,       // for line/rect/circle preview
+      lineStart: null,
       undoStack: [],
     };
+
+    // Virtual canvas dimensions
+    const CANVAS_W = 2560;
+    const CANVAS_H = 1440;
 
     // ========== DOM ==========
     const welcome = document.getElementById('welcome');
@@ -896,31 +935,96 @@
     }
 
     function resizeCanvas() {
-      const rect = canvasWrap.getBoundingClientRect();
-      // Preserve content during resize
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+      // Set canvas to virtual size
+      canvas.width = CANVAS_W * devicePixelRatio;
+      canvas.height = CANVAS_H * devicePixelRatio;
+      canvas.style.width = CANVAS_W + 'px';
+      canvas.style.height = CANVAS_H + 'px';
 
-      canvas.width = rect.width * devicePixelRatio;
-      canvas.height = rect.height * devicePixelRatio;
-      canvas.style.width = rect.width + 'px';
-      canvas.style.height = rect.height + 'px';
+      cursorCanvas.width = CANVAS_W * devicePixelRatio;
+      cursorCanvas.height = CANVAS_H * devicePixelRatio;
+      cursorCanvas.style.width = CANVAS_W + 'px';
+      cursorCanvas.style.height = CANVAS_H + 'px';
 
-      cursorCanvas.width = rect.width * devicePixelRatio;
-      cursorCanvas.height = rect.height * devicePixelRatio;
-      cursorCanvas.style.width = rect.width + 'px';
-      cursorCanvas.style.height = rect.height + 'px';
-
-      ctx.scale(devicePixelRatio, devicePixelRatio);
-      cursorCtx.scale(devicePixelRatio, devicePixelRatio);
-
-      // Restore
-      ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height,
-        0, 0, rect.width, rect.height);
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      cursorCtx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
 
       redrawAll();
+      updateMinimap();
+    }
+
+    // ========== Pan & Minimap ==========
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let scrollStartX = 0;
+    let scrollStartY = 0;
+
+    function startPan(e) {
+      if (state.tool !== 'pan') return;
+      isPanning = true;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      scrollStartX = canvasWrap.scrollLeft;
+      scrollStartY = canvasWrap.scrollTop;
+      canvas.style.cursor = 'grabbing';
+    }
+
+    function movePan(e) {
+      if (!isPanning) return;
+      const dx = panStartX - e.clientX;
+      const dy = panStartY - e.clientY;
+      canvasWrap.scrollLeft = scrollStartX + dx;
+      canvasWrap.scrollTop = scrollStartY + dy;
+      updateMinimap();
+    }
+
+    function endPan() {
+      isPanning = false;
+      canvas.style.cursor = state.tool === 'pan' ? 'grab' : 'crosshair';
+    }
+
+    function updateMinimap() {
+      const mmCanvas = document.getElementById('minimap-canvas');
+      const mmCtx = mmCanvas.getContext('2d');
+      mmCanvas.width = 180;
+      mmCanvas.height = 100;
+
+      // Draw strokes on minimap
+      mmCtx.fillStyle = '#111114';
+      mmCtx.fillRect(0, 0, 180, 100);
+
+      const scaleX = 180 / CANVAS_W;
+      const scaleY = 100 / CANVAS_H;
+
+      // Draw all strokes
+      const drawStrokeMM = (stroke) => {
+        mmCtx.strokeStyle = stroke.color;
+        mmCtx.lineWidth = Math.max(1, stroke.size * scaleX);
+        mmCtx.beginPath();
+        if (stroke.points && stroke.points.length > 0) {
+          mmCtx.moveTo(stroke.points[0].x * scaleX, stroke.points[0].y * scaleY);
+          for (let i = 1; i < stroke.points.length; i++) {
+            mmCtx.lineTo(stroke.points[i].x * scaleX, stroke.points[i].y * scaleY);
+          }
+          mmCtx.stroke();
+        }
+      };
+
+      for (const stroke of state.strokes) drawStrokeMM(stroke);
+      for (const id in state.peerStrokes) drawStrokeMM(state.peerStrokes[id]);
+
+      // Draw viewport indicator
+      const viewEl = document.getElementById('minimap-viewport');
+      const wrapRect = canvasWrap.getBoundingClientRect();
+      const vx = canvasWrap.scrollLeft * scaleX;
+      const vy = canvasWrap.scrollTop * scaleY;
+      const vw = Math.min(wrapRect.width * scaleX, 180);
+      const vh = Math.min(wrapRect.height * scaleY, 100);
+      viewEl.style.left = vx + 'px';
+      viewEl.style.top = vy + 'px';
+      viewEl.style.width = vw + 'px';
+      viewEl.style.height = vh + 'px';
     }
 
     function getPos(e) {
@@ -937,7 +1041,11 @@
     // ========== Drawing ==========
     function startDraw(e) {
       if (e.target !== canvas && e.target !== cursorCanvas) return;
-      if (state.tool === 'select') return; // Selection handled separately
+      if (state.tool === 'select') return;
+      if (state.tool === 'pan') {
+        startPan(e);
+        return;
+      }
       e.preventDefault();
       const pos = getPos(e);
       state.drawing = true;
@@ -985,6 +1093,10 @@
     }
 
     function moveDraw(e) {
+      if (isPanning) {
+        movePan(e);
+        return;
+      }
       if (!state.drawing) return;
       e.preventDefault();
       const pos = getPos(e);
@@ -1002,6 +1114,10 @@
     }
 
     function endDraw(e) {
+      if (isPanning) {
+        endPan();
+        return;
+      }
       if (!state.drawing) return;
       e.preventDefault();
       state.drawing = false;
@@ -1095,8 +1211,7 @@
     }
 
     function redrawAll() {
-      const rect = canvasWrap.getBoundingClientRect();
-      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
       // Draw local strokes
       for (const stroke of state.strokes) {
@@ -1342,6 +1457,7 @@
         toolBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.tool = btn.dataset.tool;
+        canvas.style.cursor = state.tool === 'pan' ? 'grab' : 'crosshair';
         if (state.tool !== 'select') clearSelection();
       });
     });
@@ -1457,6 +1573,7 @@
 
     // Resize handler
     window.addEventListener('resize', resizeCanvas);
+canvasWrap.addEventListener('scroll', updateMinimap);
 
     // Initial peers display
     updatePeersDisplay(1);
