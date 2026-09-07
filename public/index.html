@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>MalMit</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d0d0f;
+      color: #f0f0f0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    /* ---- Welcome / Room Screen ---- */
+    #welcome {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, #1a1a1f 0%, #0a0a0c 100%);
+      z-index: 1000;
+      transition: opacity 0.3s ease;
+    }
+    #welcome.hidden { opacity: 0; pointer-events: none; }
+    .welcome-box {
+      background: #141418;
+      border: 1px solid #2a2a2f;
+      border-radius: 16px;
+      padding: 48px 40px;
+      width: 90%;
+      max-width: 420px;
+      text-align: center;
+    }
+    .welcome-box h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .welcome-box p {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 32px;
+    }
+    .room-input {
+      width: 100%;
+      padding: 14px 16px;
+      background: #0d0d0f;
+      border: 1px solid #2a2a2f;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1rem;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .room-input:focus { border-color: #5b8cff; }
+    .btn {
+      display: inline-block;
+      margin-top: 16px;
+      width: 100%;
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #5b8cff 0%, #6c5bff 100%);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(91,140,255,0.3); }
+    .btn:active { transform: translateY(0); }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid #2a2a2f;
+      color: #aaa;
+    }
+    .btn-secondary:hover { border-color: #5b8cff; color: #fff; }
+    .divider {
+      margin: 20px 0;
+      text-align: center;
+      color: #555;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* ---- App Layout ---- */
+    #app {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Bar */
+    #top-bar {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      background: #141418;
+      border-bottom: 1px solid #1f1f25;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    #top-bar .left, #top-bar .right { display: flex; align-items: center; gap: 8px; }
+    #room-label {
+      font-size: 0.75rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+    #room-id-display {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #5b8cff;
+      background: #1a1f2e;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #room-id-display:hover { background: #252a3a; }
+
+    /* Canvas Area */
+    #canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #111114;
+    }
+    #main-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      cursor: crosshair;
+    }
+    #cursor-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    /* Tool Bar */
+    #tool-bar {
+      height: auto;
+      min-height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+      padding: 14px 20px;
+      background: #141418;
+      border-top: 1px solid #1f1f25;
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+    .tool-btn {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      color: #888;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .tool-btn:hover { background: #1f1f25; color: #fff; }
+    .tool-btn.active { background: #1f2f4e; color: #5b8cff; border-color: #5b8cff33; }
+    .tool-btn svg { width: 22px; height: 22px; }
+    .sep { width: 1px; height: 28px; background: #2a2a2f; margin: 0 4px; flex-shrink: 0; }
+    /* Color Picker */
+    #color-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      overflow-x: auto;
+      padding: 0 4px;
+    }
+    #color-bar::-webkit-scrollbar { height: 4px; }
+    #color-bar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    .color-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.2s;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .color-dot:hover { transform: scale(1.2); z-index: 10; }
+    .color-dot.active { border-color: #fff; transform: scale(1.15); }
+    .color-dot.glow {
+      box-shadow: 0 0 6px 2px currentColor;
+    }
+    .color-dot.glow.active {
+      box-shadow: 0 0 10px 3px currentColor;
+    }
+    .color-section-label {
+      font-size: 0.6rem;
+      color: #888;
+      padding: 0 6px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    
+    /* === HSL Color Spectrum === */
+    .color-spectrum-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+      min-width: 200px;
+    }
+    .hue-strip {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .hue-row {
+      display: flex;
+      gap: 1px;
+      height: 14px;
+    }
+    .hue-cell {
+      flex: 1;
+      min-width: 4px;
+      cursor: pointer;
+      border-radius: 1px;
+      transition: transform 0.1s;
+    }
+    .hue-cell:hover {
+      transform: scaleY(1.4);
+      z-index: 2;
+      box-shadow: 0 0 4px rgba(255,255,255,0.3);
+    }
+    .hue-cell.active {
+      border: 2px solid #fff;
+      transform: scaleY(1.5);
+    }
+    
+    /* HSL Sliders */
+    .hsl-sliders {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .slider-label {
+      font-size: 0.65rem;
+      color: #888;
+      width: 10px;
+      font-weight: 600;
+    }
+    .hsl-slider {
+      width: 60px;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+    .hue-slider {
+      background: linear-gradient(to right, 
+        #ff0000 0%, #ffff00 17%, #00ff00 33%, 
+        #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+    }
+    .sat-slider {
+      background: linear-gradient(to right, #555, #ff0000);
+    }
+    .light-slider {
+      background: linear-gradient(to right, #000, #888, #fff);
+    }
+    .hsl-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1px solid #333;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    
+    /* Preview Swatch */
+    .preview-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .preview-swatch:hover {
+      transform: scale(1.1);
+    }
+    .preview-swatch.active {
+      border-color: #fff;
+      box-shadow: 0 0 8px rgba(255,255,255,0.4);
+    }
+    
+    /* === 128 Palette Grid === */
+    .palette-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+      max-width: 100%;
+    }
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      gap: 3px;
+      max-height: 160px;
+      overflow-y: auto;
+      padding: 6px;
+      background: #0a0a0c;
+      border-radius: 8px;
+      border: 1px solid #1f1f25;
+    }
+    .palette-grid::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .palette-grid::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 2px;
+    }
+    .palette-slot {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      background: #1a1a1f;
+      border: 1px solid #2a2a2f;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+    }
+    .palette-slot:hover {
+      transform: scale(1.3);
+      z-index: 5;
+      box-shadow: 0 0 6px rgba(255,255,255,0.3);
+    }
+    .palette-slot.filled {
+      border-color: #333;
+    }
+    .palette-slot.active {
+      border-color: #fff;
+      transform: scale(1.3);
+      box-shadow: 0 0 8px rgba(255,255,255,0.5);
+    }
+    .palette-slot.saved-flash {
+      animation: flash 0.3s ease;
+    }
+    @keyframes flash {
+      0%, 100% { box-shadow: none; }
+      50% { box-shadow: 0 0 15px 5px rgba(255,255,255,0.8); }
+    }
+    .size-range {
+      width: 80px;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #2a2a2f;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .size-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #5b8cff;
+      cursor: pointer;
+    }
+    .size-label {
+      font-size: 0.75rem;
+      color: #666;
+      min-width: 24px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    #leave-btn {
+      font-size: 0.75rem;
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid #2a2a2f;
+      border-radius: 6px;
+      color: #888;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    #leave-btn:hover { border-color: #ff5b5b; color: #ff5b5b; }
+
+    /* Peer Cursors */
+    .peer-cursor {
+      position: absolute;
+      pointer-events: none;
+      z-index: 50;
+      transition: transform 0.1s ease-out;
+    }
+    .peer-cursor .cursor-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .peer-cursor .cursor-label {
+      position: absolute;
+      top: 14px;
+      left: 8px;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      color: #fff;
+      opacity: 0.8;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1f1f25;
+      border: 1px solid #2a2a2f;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #ddd;
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Copy link animation */
+    .copy-flash {
+      animation: flash 0.3s ease;
+    }
+    @keyframes flash {
+      0%, 100% { background: #1a1f2e; }
+      50% { background: #2a4a2e; }
+    }
+
+    /* Peers count */
+    #peers-count {
+      font-size: 0.75rem;
+      color: #555;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: #1a1f2e;
+    }
+    #peers-count.has-peers { color: #5bff8c; }
+    #refine-btn { display: none; }
+    #refine-btn.visible { display: flex; }
+    #refine-btn.loading { opacity: 0.6; pointer-events: none; }
+    /* Selection Overlay */
+    .selection-rect {
+      position: absolute;
+      border: 2px dashed #5b8cff;
+      background: rgba(91, 140, 255, 0.08);
+      pointer-events: none;
+      z-index: 60;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Welcome Screen -->
+  <div id="welcome">
+    <div class="welcome-box">
+      <h1>MalMit</h1>
+      <p>Collaborative drawing — no sign-up required.</p>
+      <input
+        id="room-input"
+        class="room-input"
+        type="text"
+        placeholder="Enter room name…"
+        maxlength="40"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button id="join-btn" class="btn">Join Room</button>
+      <div class="divider">or</div>
+      <button id="random-btn" class="btn btn-secondary">Create Random Room</button>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="app" style="display:none;">
+    <div id="top-bar">
+      <div class="left">
+        <span id="room-label">Room</span>
+        <span id="room-id-display" title="Click to copy link"></span>
+      </div>
+      <div class="right">
+        <span id="peers-count">1 online</span>
+        <button id="leave-btn">Leave</button>
+      </div>
+    </div>
+    <div id="canvas-wrap">
+      <canvas id="main-canvas"></canvas>
+      <canvas id="cursor-layer"></canvas>
+    </div>
+    <div id="tool-bar">
+      <button class="tool-btn active" data-tool="pen" title="Pen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="line" title="Line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="rect" title="Rectangle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="circle" title="Circle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="select" title="Select &amp; Refine">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+      </button>
+      <button class="tool-btn" id="refine-btn" title="Mit KI verfeinern">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="eraser" title="Eraser">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16l9-9 8 8-4 4"/><path d="M18 13l-5-5"/></svg>
+      </button>
+      <div class="sep"></div>
+      <div id="color-bar"></div>
+      <div class="sep"></div>
+      <span class="size-label" id="size-label">4</span>
+      <input type="range" class="size-range" id="size-range" min="1" max="40" value="4" />
+      <div class="sep"></div>
+      <button class="tool-btn" id="undo-btn" title="Undo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6.69 3L3 13"/></svg>
+      </button>
+      <button class="tool-btn" id="clear-btn" title="Clear All">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      </button>
+      <button class="tool-btn" id="download-btn" title="Download">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ========== State ==========
+    const state = {
+      tool: 'pen',
+      color: '#ffffff',
+      size: 4,
+      drawing: false,
+      currentRoom: null,
+      socket: null,
+      strokes: [],           // local strokes for undo
+      peerStrokes: {},       // remote strokes keyed by strokeId
+      peerCursors: {},
+      currentStroke: null,
+      lineStart: null,       // for line/rect/circle preview
+      undoStack: [],
+    };
+
+    // ========== DOM ==========
+    const welcome = document.getElementById('welcome');
+    const app = document.getElementById('app');
+    const roomInput = document.getElementById('room-input');
+    const joinBtn = document.getElementById('join-btn');
+    const randomBtn = document.getElementById('random-btn');
+    const roomIdDisplay = document.getElementById('room-id-display');
+    const leaveBtn = document.getElementById('leave-btn');
+    const canvasWrap = document.getElementById('canvas-wrap');
+    const canvas = document.getElementById('main-canvas');
+    const ctx = canvas.getContext('2d');
+    const cursorCanvas = document.getElementById('cursor-layer');
+    const cursorCtx = cursorCanvas.getContext('2d');
+    const toolBtns = document.querySelectorAll('[data-tool]');
+    const colorDots = document.querySelectorAll('.color-dot');
+
+    // ========== HSL Color System ==========
+    function hslToHex(h, s, l) {
+      s /= 100; l /= 100;
+      const a = s * Math.min(l, 1 - l);
+      const f = n => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    }
+
+    function hexToHsl(hex) {
+      let r = parseInt(hex.slice(1, 3), 16) / 255;
+      let g = parseInt(hex.slice(3, 5), 16) / 255;
+      let b = parseInt(hex.slice(5, 7), 16) / 255;
+      let max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      if (max === min) { h = s = 0; }
+      else {
+        let d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+          case g: h = ((b - r) / d + 2) / 6; break;
+          case b: h = ((r - g) / d + 4) / 6; break;
+        }
+      }
+      return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+    }
+
+    function isBrightColor(hex) {
+      if (!hex || hex.length !== 7 || hex[0] !== '#') return false;
+      const [h, s, l] = hexToHsl(hex);
+      return l > 60 && s > 50;
+    }
+
+    // 128 color palette storage (saved to localStorage)
+    const PALETTE_STORAGE_KEY = 'whiteboard_palette_128';
+    let paletteColors = new Array(128).fill(null);
+    
+    function loadPalette() {
+      try {
+        const saved = localStorage.getItem(PALETTE_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === 128) {
+            paletteColors = parsed;
+            return;
+          }
+        }
+      } catch(e) {}
+      // Default: fill first 64 with HSL spectrum, rest empty
+      for (let i = 0; i < 64; i++) {
+        const h = (i / 64) * 360;
+        paletteColors[i] = hslToHex(h, 80, 50);
+      }
+    }
+    
+    function savePalette() {
+      try {
+        localStorage.setItem(PALETTE_STORAGE_KEY, JSON.stringify(paletteColors));
+      } catch(e) {}
+    }
+
+    // HSL picker state
+    let hslState = { h: 200, s: 80, l: 50 };
+    
+    function buildColorPicker() {
+      const colorBar = document.getElementById('color-bar');
+      colorBar.innerHTML = '';
+
+      // === Section 1: HSL Spectrum Strip (hue + lightness) ===
+      const spectrumWrap = document.createElement('div');
+      spectrumWrap.className = 'color-spectrum-wrap';
+      
+      // Hue spectrum with 5 lightness rows
+      const hueStrip = document.createElement('div');
+      hueStrip.className = 'hue-strip';
+      for (let l = 90; l >= 10; l -= 20) {
+        const row = document.createElement('div');
+        row.className = 'hue-row';
+        for (let h = 0; h <= 360; h += 15) {
+          const cell = document.createElement('div');
+          cell.className = 'hue-cell';
+          cell.style.background = hslToHex(h, 80, l);
+          cell.dataset.h = h;
+          cell.dataset.l = l;
+          cell.addEventListener('click', () => {
+            hslState.h = h;
+            hslState.s = 80;
+            hslState.l = l;
+            selectColor(cell, hslToHex(h, 80, l));
+            updateHslPreview();
+          });
+          row.appendChild(cell);
+        }
+        hueStrip.appendChild(row);
+      }
+      spectrumWrap.appendChild(hueStrip);
+
+      // Custom HSL sliders
+      const sliders = document.createElement('div');
+      sliders.className = 'hsl-sliders';
+      
+      // Hue slider
+      const hueSliderWrap = document.createElement('div');
+      hueSliderWrap.className = 'slider-row';
+      hueSliderWrap.innerHTML = `<span class="slider-label">H</span>`;
+      const hueSlider = document.createElement('input');
+      hueSlider.type = 'range'; hueSlider.min = '0'; hueSlider.max = '360'; hueSlider.value = hslState.h;
+      hueSlider.className = 'hsl-slider hue-slider';
+      hueSlider.addEventListener('input', () => {
+        hslState.h = parseInt(hueSlider.value);
+        updateHslPreview();
+      });
+      hueSliderWrap.appendChild(hueSlider);
+      sliders.appendChild(hueSliderWrap);
+
+      // Saturation slider
+      const satSliderWrap = document.createElement('div');
+      satSliderWrap.className = 'slider-row';
+      satSliderWrap.innerHTML = `<span class="slider-label">S</span>`;
+      const satSlider = document.createElement('input');
+      satSlider.type = 'range'; satSlider.min = '0'; satSlider.max = '100'; satSlider.value = hslState.s;
+      satSlider.className = 'hsl-slider sat-slider';
+      satSlider.addEventListener('input', () => {
+        hslState.s = parseInt(satSlider.value);
+        updateHslPreview();
+      });
+      satSliderWrap.appendChild(satSlider);
+      sliders.appendChild(satSliderWrap);
+
+      // Lightness slider
+      const lightSliderWrap = document.createElement('div');
+      lightSliderWrap.className = 'slider-row';
+      lightSliderWrap.innerHTML = `<span class="slider-label">L</span>`;
+      const lightSlider = document.createElement('input');
+      lightSlider.type = 'range'; lightSlider.min = '0'; lightSlider.max = '100'; lightSlider.value = hslState.l;
+      lightSlider.className = 'hsl-slider light-slider';
+      lightSlider.addEventListener('input', () => {
+        hslState.l = parseInt(lightSlider.value);
+        updateHslPreview();
+      });
+      lightSliderWrap.appendChild(lightSlider);
+      sliders.appendChild(lightSliderWrap);
+
+      spectrumWrap.appendChild(sliders);
+      
+      // Preview swatch
+      const previewSwatch = document.createElement('div');
+      previewSwatch.className = 'preview-swatch';
+      previewSwatch.id = 'hsl-preview';
+      spectrumWrap.appendChild(previewSwatch);
+
+      colorBar.appendChild(spectrumWrap);
+
+      // === Section 2: 128 Palette Slots ===
+      const paletteWrap = document.createElement('div');
+      paletteWrap.className = 'palette-wrap';
+      
+      const paletteLabel = document.createElement('span');
+      paletteLabel.className = 'color-section-label';
+      paletteLabel.textContent = 'Palette (R-click=save, L-click=load)';
+      paletteWrap.appendChild(paletteLabel);
+
+      const paletteGrid = document.createElement('div');
+      paletteGrid.className = 'palette-grid';
+      for (let i = 0; i < 128; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'palette-slot';
+        slot.dataset.slot = i;
+        if (paletteColors[i]) {
+          slot.style.background = paletteColors[i];
+          slot.classList.add('filled');
+        }
+        slot.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (paletteColors[i]) {
+            selectColor(slot, paletteColors[i]);
+            const [h, s, l] = hexToHsl(paletteColors[i]);
+            hslState = { h, s, l };
+            hueSlider.value = h;
+            satSlider.value = s;
+            lightSlider.value = l;
+            updateHslPreview();
+          }
+        });
+        slot.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          if (typeof state.color === 'string' && state.color.startsWith('#') && state.color.length === 7) {
+            paletteColors[i] = state.color;
+            slot.style.background = state.color;
+            slot.classList.add('filled');
+            savePalette();
+            showToast(`Color saved to slot ${i + 1}`);
+            // Flash effect
+            slot.classList.add('saved-flash');
+            setTimeout(() => slot.classList.remove('saved-flash'), 300);
+          } else {
+            showToast('Cannot save this color type to palette');
+          }
+        });
+        paletteGrid.appendChild(slot);
+      }
+      paletteWrap.appendChild(paletteGrid);
+      colorBar.appendChild(paletteWrap);
+
+      // Initialize
+      updateHslPreview();
+      selectColor(paletteGrid.querySelector('.palette-slot') || hueStrip.querySelector('.hue-cell'), paletteColors[0] || hslToHex(hslState.h, hslState.s, hslState.l));
+    }
+
+    function updateHslPreview() {
+      const preview = document.getElementById('hsl-preview');
+      if (preview) {
+        const hex = hslToHex(hslState.h, hslState.s, hslState.l);
+        preview.style.background = hex;
+        state.color = hex;
+        state.isSpecial = false;
+        state.isGlow = hslState.l > 60 && hslState.s > 50;
+      }
+    }
+
+    function selectColor(el, color) {
+      document.querySelectorAll('.color-dot, .hue-cell, .palette-slot').forEach(d => d.classList.remove('active'));
+      if (el) el.classList.add('active');
+      
+      if (typeof color === 'string' && color.startsWith('#')) {
+        state.color = color;
+        state.isSpecial = false;
+        const [h, s, l] = hexToHsl(color);
+        state.isGlow = l > 60 && s > 50;
+        hslState = { h, s, l };
+        const hueSlider = document.querySelector('.hue-slider');
+        const satSlider = document.querySelector('.sat-slider');
+        const lightSlider = document.querySelector('.light-slider');
+        if (hueSlider) hueSlider.value = h;
+        if (satSlider) satSlider.value = s;
+        if (lightSlider) lightSlider.value = l;
+        updateHslPreview();
+      }
+    }
+    const sizeRange = document.getElementById('size-range');
+    const sizeLabel = document.getElementById('size-label');
+    const undoBtn = document.getElementById('undo-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const peersCount = document.getElementById('peers-count');
+    const toast = document.getElementById('toast');
+
+    // ========== Helpers ==========
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function randomRoomId() {
+      return Math.random().toString(36).substring(2, 10);
+    }
+
+    function resizeCanvas() {
+      const rect = canvasWrap.getBoundingClientRect();
+      // Preserve content during resize
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+      canvas.width = rect.width * devicePixelRatio;
+      canvas.height = rect.height * devicePixelRatio;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+
+      cursorCanvas.width = rect.width * devicePixelRatio;
+      cursorCanvas.height = rect.height * devicePixelRatio;
+      cursorCanvas.style.width = rect.width + 'px';
+      cursorCanvas.style.height = rect.height + 'px';
+
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      cursorCtx.scale(devicePixelRatio, devicePixelRatio);
+
+      // Restore
+      ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height,
+        0, 0, rect.width, rect.height);
+
+      redrawAll();
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches) {
+        return {
+          x: e.touches[0].clientX - rect.left,
+          y: e.touches[0].clientY - rect.top
+        };
+      }
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    // ========== Drawing ==========
+    function startDraw(e) {
+      if (e.target !== canvas && e.target !== cursorCanvas) return;
+      if (state.tool === 'select') return; // Selection handled separately
+      e.preventDefault();
+      const pos = getPos(e);
+      state.drawing = true;
+
+      if (state.tool === 'pen' || state.tool === 'eraser') {
+        state.currentStroke = {
+          id: Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+          tool: state.tool,
+          color: state.tool === 'eraser' ? '#111114' : state.color,
+          size: state.tool === 'eraser' ? state.size * 4 : state.size,
+          glow: state.isGlow,
+          isSpecial: state.isSpecial,
+          points: [pos]
+        };
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = state.currentStroke.color;
+        ctx.lineWidth = state.currentStroke.size;
+        
+        // Apply glow effect for neon colors
+        if (state.isGlow && !state.isSpecial) {
+          ctx.shadowColor = state.color;
+          ctx.shadowBlur = 15;
+        }
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(pos.x + 0.1, pos.y + 0.1);
+        ctx.stroke();
+
+        state.socket.emit('draw-start', { tool: state.tool, color: state.currentStroke.color, size: state.currentStroke.size, glow: state.isGlow, isSpecial: state.isSpecial, x: pos.x, y: pos.y });
+      } else {
+        // line / rect / circle
+        state.lineStart = pos;
+        state.currentStroke = {
+          id: Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+          tool: state.tool,
+          color: state.color,
+          size: state.size,
+          glow: state.isGlow,
+          isSpecial: state.isSpecial,
+          start: pos,
+          end: pos
+        };
+      }
+    }
+
+    function moveDraw(e) {
+      if (!state.drawing) return;
+      e.preventDefault();
+      const pos = getPos(e);
+
+      if (state.tool === 'pen' || state.tool === 'eraser') {
+        state.currentStroke.points.push(pos);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        state.socket.emit('draw-move', { x: pos.x, y: pos.y });
+      } else {
+        state.currentStroke.end = pos;
+        redrawAll();
+        drawShape(state.currentStroke, true);
+      }
+    }
+
+    function endDraw(e) {
+      if (!state.drawing) return;
+      e.preventDefault();
+      state.drawing = false;
+
+      if (state.tool === 'pen' || state.tool === 'eraser') {
+        const stroke = state.currentStroke;
+        if (stroke) {
+          state.strokes.push(stroke);
+          state.undoStack.push({ type: 'local', id: stroke.id });
+          state.socket.emit('stroke', { id: stroke.id, ...stroke });
+          state.currentStroke = null;
+          state.socket.emit('draw-end', {});
+        }
+      } else {
+        const stroke = state.currentStroke;
+        if (stroke && stroke.start && stroke.end) {
+          const dx = stroke.end.x - stroke.start.x;
+          const dy = stroke.end.y - stroke.start.y;
+          if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+            state.strokes.push(stroke);
+            state.undoStack.push({ type: 'local', id: stroke.id });
+            state.socket.emit('stroke', { id: stroke.id, ...stroke });
+          }
+        }
+        state.currentStroke = null;
+        redrawAll();
+      }
+    }
+
+    function drawShape(stroke, preview = false) {
+      if (!stroke.start || !stroke.end) return;
+      ctx.save();
+      
+      // Handle special gradient colors
+      if (stroke.isSpecial && stroke.color && stroke.color.startsWith('linear-gradient')) {
+        // Create a gradient for the shape
+        const { x: x1, y: y1 } = stroke.start;
+        const { x: x2, y: y2 } = stroke.end;
+        const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+        if (stroke.color.includes('#ff0000')) {
+          // Rainbow gradient
+          gradient.addColorStop(0, '#ff0000');
+          gradient.addColorStop(0.2, '#ff8800');
+          gradient.addColorStop(0.4, '#ffff00');
+          gradient.addColorStop(0.6, '#00ff00');
+          gradient.addColorStop(0.8, '#0088ff');
+          gradient.addColorStop(1, '#8800ff');
+        } else {
+          // Gray gradient
+          gradient.addColorStop(0, '#ffffff');
+          gradient.addColorStop(0.5, '#666666');
+          gradient.addColorStop(1, '#000000');
+        }
+        ctx.strokeStyle = gradient;
+      } else {
+        ctx.strokeStyle = stroke.color;
+      }
+      
+      ctx.lineWidth = stroke.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      // Apply glow for neon colors
+      if (stroke.glow || (stroke.color && isBrightColor(stroke.color))) {
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = 15;
+      }
+      
+      if (preview) ctx.globalAlpha = 0.7;
+
+      const { x: x1, y: y1 } = stroke.start;
+      const { x: x2, y: y2 } = stroke.end;
+
+      ctx.beginPath();
+      if (stroke.tool === 'line') {
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+      } else if (stroke.tool === 'rect') {
+        const w = x2 - x1;
+        const h = y2 - y1;
+        ctx.rect(x1, y1, w, h);
+      } else if (stroke.tool === 'circle') {
+        const rx = Math.abs(x2 - x1) / 2;
+        const ry = Math.abs(y2 - y1) / 2;
+        const cx = x1 + (x2 - x1) / 2;
+        const cy = y1 + (y2 - y1) / 2;
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function redrawAll() {
+      const rect = canvasWrap.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Draw local strokes
+      for (const stroke of state.strokes) {
+        if (stroke.tool === 'pen' || stroke.tool === 'eraser') {
+          drawStrokePath(stroke);
+        } else {
+          drawShape(stroke);
+        }
+      }
+      // Draw remote strokes
+      for (const id in state.peerStrokes) {
+        const stroke = state.peerStrokes[id];
+        if (stroke.tool === 'pen' || stroke.tool === 'eraser') {
+          drawStrokePath(stroke);
+        } else {
+          drawShape(stroke);
+        }
+      }
+    }
+
+    function drawStrokePath(stroke, isRemote = false) {
+      if (!stroke.points || stroke.points.length < 2) return;
+      
+      ctx.save();
+      ctx.beginPath();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.size;
+      
+      // Apply glow for neon colors (check if color is in neon palette or marked as glow)
+      const isNeon = stroke.glow || (stroke.color && isBrightColor(stroke.color));
+      if (isNeon) {
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = 15;
+      }
+      
+      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ========== Cursor / Awareness ==========
+    function updatePeerCursor(id, pos) {
+      if (!state.peerCursors[id]) {
+        state.peerCursors[id] = { el: createCursorEl(id), lastSeen: Date.now() };
+      }
+      const pc = state.peerCursors[id];
+      pc.el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+      pc.lastSeen = Date.now();
+    }
+
+    function createCursorEl(id) {
+      const el = document.createElement('div');
+      el.className = 'peer-cursor';
+      el.innerHTML = `
+        <div class="cursor-dot" style="background:${stringToColor(id)}"></div>
+        <div class="cursor-label" style="background:${stringToColor(id)}">${shortId(id)}</div>
+      `;
+      canvasWrap.appendChild(el);
+      return el;
+    }
+
+    function removePeerCursor(id) {
+      if (state.peerCursors[id]) {
+        state.peerCursors[id].el.remove();
+        delete state.peerCursors[id];
+      }
+    }
+
+    function stringToColor(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const colors = ['#ff5b5b','#5bff8c','#5b8cff','#ffcc5b','#cc5bff','#ff8c5b','#5bffc8','#c85bff'];
+      return colors[Math.abs(hash) % colors.length];
+    }
+
+    function shortId(id) {
+      return id.substring(0, 6);
+    }
+
+    // ========== Socket Events ==========
+    function connectSocket() {
+      state.socket = io();
+
+      state.socket.on('connect', () => {
+        state.socket.emit('join-room', state.currentRoom);
+      });
+
+      state.socket.on('room-joined', (data) => {
+        updatePeersDisplay(data.peers + 1);
+        showToast(`Connected to room "${state.currentRoom}"`);
+      });
+
+      state.socket.on('peer-joined', (data) => {
+        const count = Object.keys(state.peerCursors).length + 1;
+        updatePeersDisplay(count + 1);
+        showToast(`${shortId(data.id)} joined`);
+      });
+
+      state.socket.on('peer-left', (data) => {
+        removePeerCursor(data.id);
+        delete state.peerStrokes[data.id]; // remove their strokes? No - keep drawings
+        const count = Object.keys(state.peerCursors).length + 1;
+        updatePeersDisplay(count + 1);
+        showToast(`${shortId(data.id)} left`);
+      });
+
+      // Remote drawing
+      state.socket.on('draw-start', (data) => {
+        if (!state.peerCursors[data.id]) {
+          // init remote stroke
+        }
+        // We handle via full stroke events, but for live preview we could track partial strokes
+        // For simplicity: accumulate in temporary stroke map
+        if (!state._partialStrokes) state._partialStrokes = {};
+        state._partialStrokes[data.id] = {
+          id: 'partial-' + data.id,
+          tool: data.tool,
+          color: data.tool === 'eraser' ? '#111114' : data.color,
+          size: data.tool === 'eraser' ? data.size * 4 : data.size,
+          glow: data.glow,
+          isSpecial: data.isSpecial,
+          points: [{ x: data.x, y: data.y }]
+        };
+        // Start path on main canvas
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = state._partialStrokes[data.id].color;
+        ctx.lineWidth = state._partialStrokes[data.id].size;
+        
+        // Apply glow for neon colors
+        if (data.glow && !data.isSpecial) {
+          ctx.shadowColor = data.color;
+          ctx.shadowBlur = 15;
+        }
+        
+        ctx.beginPath();
+        ctx.moveTo(data.x, data.y);
+      });
+
+      state.socket.on('draw-move', (data) => {
+        if (state._partialStrokes && state._partialStrokes[data.id]) {
+          const stroke = state._partialStrokes[data.id];
+          stroke.points.push({ x: data.x, y: data.y });
+          ctx.lineTo(data.x, data.y);
+          ctx.stroke();
+        }
+      });
+
+      state.socket.on('draw-end', (data) => {
+        if (state._partialStrokes && state._partialStrokes[data.id]) {
+          const stroke = state._partialStrokes[data.id];
+          state.peerStrokes[stroke.id] = stroke;
+          delete state._partialStrokes[data.id];
+          ctx.restore();
+        }
+      });
+
+      state.socket.on('strokes-replay', (data) => {
+        // Replay all existing strokes from the room
+        for (const item of data.strokes) {
+          state.peerStrokes[item.stroke.id] = item.stroke;
+        }
+        redrawAll();
+      });
+
+      state.socket.on('stroke', (data) => {
+        // Full stroke from another user (or replay)
+        if (!state.peerStrokes[data.id]) {
+          state.peerStrokes[data.id] = [];
+        }
+        // Store by strokeId from data
+        state.peerStrokes[data.stroke.id] = data.stroke;
+        redrawAll();
+      });
+
+      state.socket.on('clear-canvas', () => {
+        redrawAll(); // won't clear, need actual clear
+        // Actually clear peer strokes
+        state.peerStrokes = {};
+        redrawAll();
+        showToast('Canvas cleared');
+      });
+
+      state.socket.on('undo', (data) => {
+        // Remove a stroke from peerStrokes
+        delete state.peerStrokes[data.strokeId];
+        redrawAll();
+      });
+
+      state.socket.on('cursor', (data) => {
+        updatePeerCursor(data.id, data.pos);
+      });
+    }
+
+    function updatePeersDisplay(count) {
+      peersCount.textContent = count === 1 ? '1 online' : `${count} online`;
+      peersCount.classList.toggle('has-peers', count > 1);
+    }
+
+    // ========== Undo / Clear ==========
+    function undo() {
+      if (state.undoStack.length === 0) {
+        showToast('Nothing to undo');
+        return;
+      }
+      const item = state.undoStack.pop();
+      if (item.type === 'local') {
+        const idx = state.strokes.findIndex(s => s.id === item.id);
+        if (idx !== -1) state.strokes.splice(idx, 1);
+        state.socket.emit('undo', item.id);
+      }
+      redrawAll();
+    }
+
+    function clearAll() {
+      state.strokes = [];
+      state.peerStrokes = {};
+      state.undoStack = [];
+      redrawAll();
+      state.socket.emit('clear-canvas');
+      showToast('Canvas cleared');
+    }
+
+    function downloadCanvas() {
+      const link = document.createElement('a');
+      link.download = `whiteboard-${state.currentRoom}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // ========== Tool Events ==========
+    toolBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        toolBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.tool = btn.dataset.tool;
+        if (state.tool !== 'select') clearSelection();
+      });
+    });
+
+    // Build HSL color picker with 128 palette slots
+    loadPalette();
+    buildColorPicker();
+
+    sizeRange.addEventListener('input', () => {
+      state.size = parseInt(sizeRange.value);
+      sizeLabel.textContent = state.size;
+    });
+
+    undoBtn.addEventListener('click', undo);
+    clearBtn.addEventListener('click', clearAll);
+    downloadBtn.addEventListener('click', downloadCanvas);
+
+    leaveBtn.addEventListener('click', () => {
+      if (state.socket) state.socket.disconnect();
+      location.reload();
+    });
+
+    roomIdDisplay.addEventListener('click', () => {
+      const url = location.origin + '/?room=' + encodeURIComponent(state.currentRoom);
+      navigator.clipboard.writeText(url).then(() => {
+        roomIdDisplay.classList.add('copy-flash');
+        setTimeout(() => roomIdDisplay.classList.remove('copy-flash'), 300);
+        showToast('Link copied to clipboard');
+      });
+    });
+
+    // ========== Pointer Events ==========
+    function bindCanvasEvents() {
+      // Mouse
+      canvas.addEventListener('mousedown', startDraw);
+      window.addEventListener('mousemove', (e) => {
+        if (state.drawing) moveDraw(e);
+        // Always emit cursor
+        const pos = getCursorPos(e);
+        if (pos && state.socket) state.socket.emit('cursor', pos);
+      });
+      window.addEventListener('mouseup', endDraw);
+
+      // Touch
+      canvas.addEventListener('touchstart', startDraw, { passive: false });
+      canvas.addEventListener('touchmove', moveDraw, { passive: false });
+      canvas.addEventListener('touchend', endDraw);
+    }
+
+    function getCursorPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    // ========== Room Join Logic ==========
+    function joinRoom(roomId) {
+      state.currentRoom = roomId;
+      roomIdDisplay.textContent = roomId;
+
+      welcome.classList.add('hidden');
+      setTimeout(() => {
+        welcome.style.display = 'none';
+        app.style.display = 'flex';
+        resizeCanvas();
+        bindCanvasEvents();
+        connectSocket();
+      }, 300);
+
+      // Update URL without reload
+      const url = new URL(location);
+      url.searchParams.set('room', roomId);
+      history.replaceState(null, '', url);
+    }
+
+    joinBtn.addEventListener('click', () => {
+      const room = roomInput.value.trim();
+      if (!room) {
+        showToast('Please enter a room name');
+        return;
+      }
+      joinRoom(room);
+    });
+
+    roomInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinBtn.click();
+    });
+
+    randomBtn.addEventListener('click', () => {
+      const id = randomRoomId();
+      joinRoom(id);
+    });
+
+    // Check URL for room param
+    const urlParams = new URLSearchParams(location.search);
+    const urlRoom = urlParams.get('room');
+    if (urlRoom) {
+      roomInput.value = urlRoom;
+      joinRoom(urlRoom);
+    }
+
+    // Resize handler
+    window.addEventListener('resize', resizeCanvas);
+
+    // Initial peers display
+    updatePeersDisplay(1);
+
+    // ========== Selection & AI Refine ==========
+    const refineBtn = document.getElementById('refine-btn');
+    let selection = null; // { x, y, w, h }
+    let selectionEl = null;
+    let isSelecting = false;
+    let selectStart = null;
+
+    function initSelection() {
+      // Mouse events for selection
+      canvas.addEventListener('mousedown', onSelectStart);
+      window.addEventListener('mousemove', onSelectMove);
+      window.addEventListener('mouseup', onSelectEnd);
+      canvas.addEventListener('touchstart', onSelectStart, { passive: false });
+      canvas.addEventListener('touchmove', onSelectMove, { passive: false });
+      canvas.addEventListener('touchend', onSelectEnd);
+    }
+
+    function getCanvasPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches) {
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+      }
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function onSelectStart(e) {
+      if (state.tool !== 'select') return;
+      e.preventDefault();
+      isSelecting = true;
+      selectStart = getCanvasPos(e);
+      selection = { x: selectStart.x, y: selectStart.y, w: 0, h: 0 };
+      updateSelectionEl();
+    }
+
+    function onSelectMove(e) {
+      if (!isSelecting || state.tool !== 'select') return;
+      e.preventDefault();
+      const pos = getCanvasPos(e);
+      selection.x = Math.min(selectStart.x, pos.x);
+      selection.y = Math.min(selectStart.y, pos.y);
+      selection.w = Math.abs(pos.x - selectStart.x);
+      selection.h = Math.abs(pos.y - selectStart.y);
+      updateSelectionEl();
+    }
+
+    function onSelectEnd(e) {
+      if (!isSelecting) return;
+      e.preventDefault();
+      isSelecting = false;
+      if (selection && selection.w > 10 && selection.h > 10) {
+        refineBtn.classList.add('visible');
+      } else {
+        clearSelection();
+      }
+    }
+
+    function updateSelectionEl() {
+      if (!selectionEl) {
+        selectionEl = document.createElement('div');
+        selectionEl.className = 'selection-rect';
+        canvasWrap.appendChild(selectionEl);
+      }
+      selectionEl.style.left = selection.x + 'px';
+      selectionEl.style.top = selection.y + 'px';
+      selectionEl.style.width = selection.w + 'px';
+      selectionEl.style.height = selection.h + 'px';
+    }
+
+    function clearSelection() {
+      selection = null;
+      if (selectionEl) {
+        selectionEl.remove();
+        selectionEl = null;
+      }
+      refineBtn.classList.remove('visible');
+    }
+
+    // Refine button click
+    refineBtn.addEventListener('click', async () => {
+      if (!selection || selection.w < 10 || selection.h < 10) {
+        showToast('Bitte wähle zuerst einen Bereich aus');
+        return;
+      }
+
+      refineBtn.classList.add('loading');
+      showToast('KI verfeinert…');
+
+      try {
+        // Extract selected area as PNG
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = selection.w;
+        tempCanvas.height = selection.h;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(
+          canvas,
+          selection.x * devicePixelRatio,
+          selection.y * devicePixelRatio,
+          selection.w * devicePixelRatio,
+          selection.h * devicePixelRatio,
+          0, 0,
+          selection.w,
+          selection.h
+        );
+        const dataUrl = tempCanvas.toDataURL('image/png');
+
+        // Send to server for AI refinement
+        const response = await fetch('/api/refine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: dataUrl,
+            prompt: 'Refine and enhance this drawing area, keep the style and content but make it cleaner and more detailed'
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || `Server error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success && result.image) {
+          // Load refined image and draw back to canvas
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, selection.x, selection.y, selection.w, selection.h);
+            showToast('Verfeinert!');
+            clearSelection();
+          };
+          img.onerror = () => {
+            showToast('Fehler beim Laden des verfeinerten Bildes');
+          };
+          img.src = result.image;
+        } else {
+          throw new Error('Kein Bild in der Antwort');
+        }
+      } catch (err) {
+        console.error('Refine error:', err);
+        showToast('Fehler: ' + err.message);
+      } finally {
+        refineBtn.classList.remove('loading');
+      }
+    });
+
+    // Initialize selection
+    initSelection();
+
+  </script>
+</body>
+</html>
