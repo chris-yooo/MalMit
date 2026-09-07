@@ -1357,6 +1357,10 @@
 
     leaveBtn.addEventListener('click', () => {
       if (state.socket) state.socket.disconnect();
+      // Clear room param so reload doesn't auto-join
+      const url = new URL(location);
+      url.searchParams.delete('room');
+      history.replaceState(null, '', url);
       location.reload();
     });
 
