@@ -610,6 +610,12 @@
     const app = document.getElementById('app');
     const usernameInput = document.getElementById('username-input');
     const roomInput = document.getElementById('room-input');
+
+    // Load saved username from localStorage
+    const savedUsername = localStorage.getItem('malmit_username');
+    if (savedUsername) {
+      usernameInput.value = savedUsername;
+    }
     const joinBtn = document.getElementById('join-btn');
     const randomBtn = document.getElementById('random-btn');
     const roomIdDisplay = document.getElementById('room-id-display');
@@ -1396,6 +1402,7 @@
       }
       state.currentRoom = roomId;
       state.username = username;
+      localStorage.setItem('malmit_username', username);
       roomIdDisplay.textContent = roomId;
 
       welcome.classList.add('hidden');
