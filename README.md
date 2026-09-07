@@ -5,6 +5,7 @@ Kollaboratives Whiteboard — gemeinsam in Echtzeit zeichnen, kein Login nötig.
 ## Features
 
 - **Echtzeit-Kollaboration** — mehrere Nutzer im gleichen Raum via Socket.IO
+- **Username** — Namenswahl beim Betreten des Raums
 - **Zeichenwerkzeuge** — Stift, Linie, Rechteck, Kreis, Radierer, Auswahl
 - **HSL-Farbpicker** — Spektralstreifen + H/S/L-Regler inkl. Vorschau
 - **128-Farben-Palette** — Rechtsklick speichert, Linksklick lädt (localStorage)
@@ -36,9 +37,10 @@ Port 3030 wird exposed. Stoppen mit `docker compose down`.
 
 ## Nutzung
 
-1. Raumname eingeben oder „Create Random Room" wählen
-2. Link kopieren (Raum-ID oben klicken) und teilen
-3. Loszeichnen!
+1. Namen eingeben
+2. Raumname eingeben oder „Create Random Room" wählen
+3. Link kopieren (Raum-ID oben klicken) und teilen
+4. Loszeichnen!
 
 ## KI-Verfeinerung (optional)
 
