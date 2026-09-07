@@ -505,6 +505,15 @@
       <h1>MalMit</h1>
       <p>Collaborative drawing — no sign-up required.</p>
       <input
+        id="username-input"
+        class="room-input"
+        type="text"
+        placeholder="Dein Name…"
+        maxlength="20"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <input
         id="room-input"
         class="room-input"
         type="text"
@@ -586,6 +595,7 @@
       size: 4,
       drawing: false,
       currentRoom: null,
+      username: '',
       socket: null,
       strokes: [],           // local strokes for undo
       peerStrokes: {},       // remote strokes keyed by strokeId
@@ -598,6 +608,7 @@
     // ========== DOM ==========
     const welcome = document.getElementById('welcome');
     const app = document.getElementById('app');
+    const usernameInput = document.getElementById('username-input');
     const roomInput = document.getElementById('room-input');
     const joinBtn = document.getElementById('join-btn');
     const randomBtn = document.getElementById('random-btn');
@@ -1122,21 +1133,22 @@
     }
 
     // ========== Cursor / Awareness ==========
-    function updatePeerCursor(id, pos) {
+    function updatePeerCursor(id, pos, username) {
       if (!state.peerCursors[id]) {
-        state.peerCursors[id] = { el: createCursorEl(id), lastSeen: Date.now() };
+        state.peerCursors[id] = { el: createCursorEl(id, username), lastSeen: Date.now() };
       }
       const pc = state.peerCursors[id];
       pc.el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
       pc.lastSeen = Date.now();
     }
 
-    function createCursorEl(id) {
+    function createCursorEl(id, username) {
       const el = document.createElement('div');
       el.className = 'peer-cursor';
+      const displayName = username || shortId(id);
       el.innerHTML = `
         <div class="cursor-dot" style="background:${stringToColor(id)}"></div>
-        <div class="cursor-label" style="background:${stringToColor(id)}">${shortId(id)}</div>
+        <div class="cursor-label" style="background:${stringToColor(id)}">${displayName}</div>
       `;
       canvasWrap.appendChild(el);
       return el;
@@ -1167,26 +1179,26 @@
       state.socket = io();
 
       state.socket.on('connect', () => {
-        state.socket.emit('join-room', state.currentRoom);
+        state.socket.emit('join-room', state.currentRoom, state.username);
       });
 
       state.socket.on('room-joined', (data) => {
         updatePeersDisplay(data.peers + 1);
-        showToast(`Connected to room "${state.currentRoom}"`);
+        showToast(`Verbunden mit Raum "${state.currentRoom}" als ${data.username}`);
       });
 
       state.socket.on('peer-joined', (data) => {
         const count = Object.keys(state.peerCursors).length + 1;
         updatePeersDisplay(count + 1);
-        showToast(`${shortId(data.id)} joined`);
+        showToast(`${data.username || shortId(data.id)} ist beigetreten`);
       });
 
       state.socket.on('peer-left', (data) => {
         removePeerCursor(data.id);
-        delete state.peerStrokes[data.id]; // remove their strokes? No - keep drawings
+        delete state.peerStrokes[data.id];
         const count = Object.keys(state.peerCursors).length + 1;
         updatePeersDisplay(count + 1);
-        showToast(`${shortId(data.id)} left`);
+        showToast(`${data.username || shortId(data.id)} hat den Raum verlassen`);
       });
 
       // Remote drawing
@@ -1274,7 +1286,7 @@
       });
 
       state.socket.on('cursor', (data) => {
-        updatePeerCursor(data.id, data.pos);
+        updatePeerCursor(data.id, data.pos, data.username);
       });
     }
 
@@ -1376,7 +1388,14 @@
 
     // ========== Room Join Logic ==========
     function joinRoom(roomId) {
+      const username = usernameInput.value.trim();
+      if (!username) {
+        showToast('Bitte gib einen Namen ein');
+        usernameInput.focus();
+        return;
+      }
       state.currentRoom = roomId;
+      state.username = username;
       roomIdDisplay.textContent = roomId;
 
       welcome.classList.add('hidden');

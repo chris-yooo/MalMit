@@ -20,7 +20,7 @@ const roomStrokes = {}; // roomId -> array of strokes
 io.on('connection', (socket) => {
   let currentRoom = null;
 
-  socket.on('join-room', (roomId) => {
+  socket.on('join-room', (roomId, username) => {
     if (!roomId || typeof roomId !== 'string') return;
     currentRoom = roomId;
     socket.join(roomId);
@@ -28,9 +28,12 @@ io.on('connection', (socket) => {
     if (!rooms[roomId]) rooms[roomId] = new Set();
     rooms[roomId].add(socket.id);
 
+    // Store username on socket
+    socket.username = typeof username === 'string' ? username.substring(0, 20) : 'Anonymous';
+
     // Send current drawing state to the new participant
     const roomClients = Array.from(rooms[roomId]);
-    socket.emit('room-joined', { roomId, peers: roomClients.length - 1 });
+    socket.emit('room-joined', { roomId, peers: roomClients.length - 1, username: socket.username });
 
     // Replay all existing strokes to the new participant
     if (roomStrokes[roomId] && roomStrokes[roomId].length > 0) {
@@ -38,9 +41,9 @@ io.on('connection', (socket) => {
     }
 
     // Notify others
-    socket.to(roomId).emit('peer-joined', { id: socket.id });
+    socket.to(roomId).emit('peer-joined', { id: socket.id, username: socket.username });
 
-    console.log(`Socket ${socket.id} joined room: ${roomId} (${rooms[roomId].size} users)`);
+    console.log(`Socket ${socket.id} (${socket.username}) joined room: ${roomId} (${rooms[roomId].size} users)`);
   });
 
   // Drawing events – scoped to room
@@ -91,18 +94,18 @@ io.on('connection', (socket) => {
   // Cursor / awareness
   socket.on('cursor', (pos) => {
     if (!currentRoom) return;
-    socket.to(currentRoom).emit('cursor', { id: socket.id, pos });
+    socket.to(currentRoom).emit('cursor', { id: socket.id, pos, username: socket.username });
   });
 
   socket.on('disconnect', () => {
     if (currentRoom && rooms[currentRoom]) {
       rooms[currentRoom].delete(socket.id);
-      socket.to(currentRoom).emit('peer-left', { id: socket.id });
+      socket.to(currentRoom).emit('peer-left', { id: socket.id, username: socket.username });
       if (rooms[currentRoom].size === 0) {
         delete rooms[currentRoom];
         delete roomStrokes[currentRoom];
       }
-      console.log(`Socket ${socket.id} left room: ${currentRoom}`);
+      console.log(`Socket ${socket.id} (${socket.username}) left room: ${currentRoom}`);
     }
   });
 });
