@@ -492,6 +492,52 @@
     #refine-btn { display: none; }
     #refine-btn.visible { display: flex; }
     #refine-btn.loading { opacity: 0.6; pointer-events: none; }
+    /* Open Rooms */
+    #open-rooms {
+      margin-top: 16px;
+      text-align: left;
+    }
+    .open-rooms-label {
+      font-size: 0.75rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .room-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #0d0d0f;
+      border: 1px solid #2a2a2f;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .room-item:hover {
+      border-color: #5b8cff;
+      background: #1a1f2e;
+    }
+    .room-item-name {
+      font-weight: 600;
+      color: #fff;
+      font-size: 0.9rem;
+    }
+    .room-item-users {
+      font-size: 0.75rem;
+      color: #5bff8c;
+      background: #1a2e1f;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .no-rooms {
+      font-size: 0.85rem;
+      color: #555;
+      text-align: center;
+      padding: 12px;
+    }
     /* Minimap */
     #minimap {
       position: fixed;
@@ -553,6 +599,11 @@
       <button id="join-btn" class="btn">Join Room</button>
       <div class="divider">or</div>
       <button id="random-btn" class="btn btn-secondary">Create Random Room</button>
+      <div class="divider">or</div>
+      <div id="open-rooms">
+        <p class="open-rooms-label">Offene Räume:</p>
+        <div id="rooms-list"></div>
+      </div>
     </div>
   </div>
 
@@ -1570,6 +1621,42 @@
       roomInput.value = urlRoom;
       joinRoom(urlRoom);
     }
+
+    // ========== Open Rooms ==========
+    const roomsList = document.getElementById('rooms-list');
+
+    async function loadOpenRooms() {
+      try {
+        const res = await fetch('/api/rooms');
+        const data = await res.json();
+
+        if (!data.rooms || data.rooms.length === 0) {
+          roomsList.innerHTML = '<div class="no-rooms">Keine offenen Räume</div>';
+          return;
+        }
+
+        roomsList.innerHTML = '';
+        for (const room of data.rooms) {
+          const item = document.createElement('div');
+          item.className = 'room-item';
+          item.innerHTML = `
+            <span class="room-item-name">${room.id}</span>
+            <span class="room-item-users">${room.users} online</span>
+          `;
+          item.addEventListener('click', () => {
+            roomInput.value = room.id;
+            joinRoom(room.id);
+          });
+          roomsList.appendChild(item);
+        }
+      } catch (err) {
+        roomsList.innerHTML = '<div class="no-rooms">Fehler beim Laden</div>';
+      }
+    }
+
+    // Load initially and poll every 10s
+    loadOpenRooms();
+    setInterval(loadOpenRooms, 10000);
 
     // Resize handler
     window.addEventListener('resize', resizeCanvas);

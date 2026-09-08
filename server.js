@@ -110,7 +110,18 @@ io.on('connection', (socket) => {
   });
 });
 
-// ========== AI Refine Endpoint (Local SD via Vulkan) ==========
+app.get('/api/rooms', (req, res) => {
+  const roomList = [];
+  for (const roomId in rooms) {
+    if (rooms[roomId].size > 0) {
+      roomList.push({
+        id: roomId,
+        users: rooms[roomId].size
+      });
+    }
+  }
+  res.json({ rooms: roomList });
+});
 app.post('/api/refine', async (req, res) => {
   try {
     const { image, prompt } = req.body;
