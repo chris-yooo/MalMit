@@ -8,6 +8,7 @@ Kollaboratives Whiteboard — gemeinsam in Echtzeit zeichnen, kein Login nötig.
 - **Username** — Namenswahl beim Betreten des Raums (gespeichert in localStorage)
 - **Letzter Raum** — Raumname wird gespeichert und beim nächsten Besuch vorausgefüllt
 - **Pan & Minimap** — 2560×1440 virtueller Canvas, navigierbar per Hand-Tool und Minimap
+- **Offene Räume** — aktive Räume mit Nutzeranzahl auf der Landingpage anzeigen
 - **Zeichenwerkzeuge** — Stift, Linie, Rechteck, Kreis, Radierer, Auswahl
 - **HSL-Farbpicker** — Spektralstreifen + H/S/L-Regler inkl. Vorschau
 - **128-Farben-Palette** — Rechtsklick speichert, Linksklick lädt (localStorage)
@@ -58,6 +59,7 @@ Voraussetzung: Lokaler Stable Diffusion Server (z.B. [sd-server](https://github.
 | Endpoint | Methode | Beschreibung |
 |----------|---------|--------------|
 | `/api/refine` | POST | Bild an Stable Diffusion senden. Body: `{ image: dataURL, prompt: string }` |
+| `/api/rooms` | GET | Aktive Räume mit Nutzeranzahl |
 
 ## Technologien
 
