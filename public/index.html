@@ -481,14 +481,62 @@
     }
 
     /* Peers count */
+    #online-users {
+      position: relative;
+    }
     #peers-count {
       font-size: 0.75rem;
       color: #555;
       padding: 4px 8px;
       border-radius: 4px;
       background: #1a1f2e;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    #peers-count:hover {
+      background: #252a3a;
+      color: #fff;
     }
     #peers-count.has-peers { color: #5bff8c; }
+    #users-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      min-width: 160px;
+      background: #141418;
+      border: 1px solid #2a2a2f;
+      border-radius: 8px;
+      padding: 8px;
+      margin-top: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      z-index: 300;
+    }
+    #users-dropdown.show {
+      display: block;
+    }
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #ddd;
+    }
+    .user-item.self {
+      color: #5b8cff;
+    }
+    .user-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #5bff8c;
+    }
+    .user-dot.self {
+      background: #5b8cff;
+    }
     #refine-btn { display: none; }
     #refine-btn.visible { display: flex; }
     #refine-btn.loading { opacity: 0.6; pointer-events: none; }
@@ -615,7 +663,10 @@
         <span id="room-id-display" title="Click to copy link"></span>
       </div>
       <div class="right">
-        <span id="peers-count">1 online</span>
+        <div id="online-users">
+          <button id="peers-count">1 online</button>
+          <div id="users-dropdown"></div>
+        </div>
         <button id="leave-btn">Leave</button>
       </div>
     </div>
@@ -1311,7 +1362,7 @@
     // ========== Cursor / Awareness ==========
     function updatePeerCursor(id, pos, username) {
       if (!state.peerCursors[id]) {
-        state.peerCursors[id] = { el: createCursorEl(id, username), lastSeen: Date.now() };
+        state.peerCursors[id] = { el: createCursorEl(id, username), lastSeen: Date.now(), username };
       }
       const pc = state.peerCursors[id];
       pc.el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
@@ -1469,6 +1520,30 @@
     function updatePeersDisplay(count) {
       peersCount.textContent = count === 1 ? '1 online' : `${count} online`;
       peersCount.classList.toggle('has-peers', count > 1);
+      updateUsersDropdown();
+    }
+
+    function updateUsersDropdown() {
+      const dropdown = document.getElementById('users-dropdown');
+      dropdown.innerHTML = '';
+
+      // Add self
+      if (state.username) {
+        const selfItem = document.createElement('div');
+        selfItem.className = 'user-item self';
+        selfItem.innerHTML = `<div class="user-dot self"></div><span>${state.username} (du)</span>`;
+        dropdown.appendChild(selfItem);
+      }
+
+      // Add peers from peerCursors
+      for (const id in state.peerCursors) {
+        const pc = state.peerCursors[id];
+        const peerItem = document.createElement('div');
+        peerItem.className = 'user-item';
+        const username = pc.username || id.substring(0, 6);
+        peerItem.innerHTML = `<div class="user-dot"></div><span>${username}</span>`;
+        dropdown.appendChild(peerItem);
+      }
     }
 
     // ========== Undo / Clear ==========
@@ -1533,6 +1608,17 @@
       url.searchParams.delete('room');
       history.replaceState(null, '', url);
       location.reload();
+    });
+
+    // Toggle users dropdown
+    peersCount.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('users-dropdown').classList.toggle('show');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+      document.getElementById('users-dropdown').classList.remove('show');
     });
 
     roomIdDisplay.addEventListener('click', () => {
