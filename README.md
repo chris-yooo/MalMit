@@ -38,10 +38,30 @@ docker compose up -d
 
 Port 3030 wird exposed. Stoppen mit `docker compose down`.
 
+## Production
+
+For production deployment, use Docker Compose with the provided `docker-compose.yml`. The image is built from `node:20-alpine` and exposes port 3030.
+
+Environment variables can be set via a `.env` file (not committed) or directly in the compose file. The following variable is supported:
+
+- `PORT`: The port the server listens on (default: 3030).
+
+Example `.env`:
+```
+PORT=3030
+```
+
+Then run:
+```bash
+docker compose up -d
+```
+
+The container will restart automatically unless stopped.
+
 ## Nutzung
 
 1. Namen eingeben
-2. Raumname eingeben oder „Create Random Room" wählen
+2. Raumname eingeben oder „Create Random Room\" wählen
 3. Link kopieren (Raum-ID oben klicken) und teilen
 4. Loszeichnen!
 
@@ -49,17 +69,17 @@ Port 3030 wird exposed. Stoppen mit `docker compose down`.
 
 Voraussetzung: Lokaler Stable Diffusion Server (z.B. [sd-server](https://github.com/AUTOMATIC1111/stable-diffusion-webui) mit API) auf `localhost:8080`.
 
-1. Werkzeug „Select" wählen
+1. Werkzeug „Select\" wählen
 2. Bereich auf Canvas markieren
 3. Stern-Button (✨) klicken
 4. Markiertes Bild wird an `/api/refine` gesendet → SD img2img → Ergebnis wird eingefügt
 
 ## API
 
-| Endpoint | Methode | Beschreibung |
-|----------|---------|--------------|
-| `/api/refine` | POST | Bild an Stable Diffusion senden. Body: `{ image: dataURL, prompt: string }` |
-| `/api/rooms` | GET | Aktive Räume mit Nutzeranzahl |
+|| Endpoint | Methode | Beschreibung ||
+||----------|---------|--------------||
+|| `/api/refine` | POST | Bild an Stable Diffusion senden. Body: `{ image: dataURL, prompt: string }` ||
+|| `/api/rooms` | GET | Aktive Räume mit Nutzeranzahl ||
 
 ## Technologien
 
@@ -83,9 +103,9 @@ malmit/
 
 ## Umgebungsvariablen
 
-| Variable | Default | Beschreibung |
-|----------|---------|--------------|
-| `PORT` | `3030` | Server-Port |
+|| Variable | Default | Beschreibung ||
+||----------|---------|--------------||
+|| `PORT` | `3030` | Server-Port ||
 
 ## Lizenz
 
